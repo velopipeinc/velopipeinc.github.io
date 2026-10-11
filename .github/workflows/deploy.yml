@@ -29,7 +29,7 @@ jobs:
       - name: Upload Artifacts
         uses: actions/upload-pages-artifact@v3
         with:
-          path: '.' # Uploads your standard HTML/CSS/JS files straight from the root folder
+          path: 'public' # Uploads your standard HTML/CSS/JS files straight from the root folder
 
       - name: Deploy to GitHub Pages
         id: deployment
