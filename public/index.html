@@ -2367,9 +2367,9 @@ html body .image-card-block {
         <input 
           id="ai-chat-input" 
           type="text" 
-          placeholder="Ask anything... (Max 22 Sats)" 
+          placeholder="Ask anything... (Max 21 Sats)" 
           aria-label="Type message" 
-          maxlength="220"
+          maxlength="210"
         />
         <button id="ai-send-btn" type="button" aria-label="Send message">Send</button>
       </div>
@@ -2381,7 +2381,7 @@ html body .image-card-block {
 
 <!-- PART 3: JS CORE INITIALIZATION & UI CONTROLS -->
 <script>
-  
+
 (function () {
   // Point this exactly to your live Vercel backend endpoint deployment link
   const API_URL = 'https://vercel.app';
