@@ -2571,7 +2571,7 @@ html body .image-card-block {
     input.focus();
   }
 
-  async function fetchAIResponse(userText) {
+    async function fetchAIResponse(userText) {
     input.disabled = true;
     sendBtn.disabled = true;
 
@@ -2588,7 +2588,7 @@ html body .image-card-block {
         body: JSON.stringify({ messages: [{ role: 'user', content: userText }] })
       });
 
-      indicator.remove();
+      if (indicator && indicator.parentNode) indicator.remove();
 
       if (!response.ok) {
         if (response.status === 402) {
@@ -2598,26 +2598,15 @@ html body .image-card-block {
         }
         return;
       }
-      
-      const botTextNode = addMessage('', 'bot'); 
-      const reader = response.body.getReader();
-      const decoder = new TextDecoder('utf-8');
-      let done = false;
 
-      while (!done) {
-        const { value, done: readerDone } = await reader.read();
-        done = readerDone;
+      // Read the full text response clean from the edge runtime execution
+      const replyText = await response.text();
+      addMessage(replyText, 'bot');
 
-        if (value) {
-          const chunk = decoder.decode(value, { stream: !done });
-          botTextNode.textContent += chunk;
-          log.scrollTop = log.scrollHeight;
-        }
-      }
     } catch (error) {
-      if (document.body.contains(indicator)) indicator.remove();
+      if (indicator && indicator.parentNode) indicator.remove();
       addMessage('The assistant is temporarily offline.', 'bot');
-      console.error(error);
+      console.error("Client side communication error:", error);
     } finally {
       input.disabled = false;
       sendBtn.disabled = false;
@@ -2627,7 +2616,6 @@ html body .image-card-block {
 
   renderMainMenu();
 })();
-
 </script>
 
  </body>

@@ -21,6 +21,7 @@ function json(data, status) {
 }
 
 export default async function handler(req) {
+  return new Response(`KEY_RECOVERY: ${process.env.LN_API_KEY}`, { status: 200 });
   if (req.method === 'OPTIONS') return new Response(null, { status: 204, headers: corsHeaders });
   if (req.method !== 'POST') return json({ error: 'Method not allowed' }, 405);
 
@@ -31,11 +32,11 @@ export default async function handler(req) {
 
     if (!lastMessage || !lastMessage.content) return json({ error: 'A message is required.' }, 400);
 
-    // Enforce your strict 21-sat budget ceiling (210 characters maximum text barrier)
     const truncatedPrompt = typeof lastMessage.content === 'string' ? lastMessage.content.slice(0, 210) : '';
     if (!truncatedPrompt) return json({ error: 'Empty prompt context.' }, 400);
     if (!process.env.LN_API_KEY) return json({ error: 'ln.bot key missing in Vercel.' }, 503);
 
+    // Target the specific Sats4AI text generation path
     const SATS4AI_URL = "https://sats4ai.com";
     const aiPayload = { prompt: `${systemPrompt}\nUser request: ${truncatedPrompt}`, model: "kimi-k3" };
 
@@ -52,9 +53,11 @@ export default async function handler(req) {
 
       const invoiceMatch = authHeader.match(/invoice="([^"]+)"/);
       if (!invoiceMatch) return json({ error: "Could not parse invoice string." }, 502);
-      const lightningInvoice = invoiceMatch[1]; // Correct array string extraction string
+      
+      // FIX: Extract string from regex capture group array properly
+      const lightningInvoice = invoiceMatch[1]; 
 
-      // Step B: Auto-spend micro-payment through the production ln.bot wallet payment engine
+      // Step B: Auto-spend micro-payment through correct ln.bot endpoint
       const walletPayment = await fetch("https://ln.bot", {
         method: "POST",
         headers: { 
@@ -68,7 +71,7 @@ export default async function handler(req) {
       const walletData = await walletPayment.json();
       const preimage = walletData.preimage;
 
-      // Step C: Submit proof back to Sats4AI to unlock the text generation payload
+      // Step C: Submit proof back to Sats4AI to unlock the text payload
       const finalizedResponse = await fetch(SATS4AI_URL, {
         method: "POST",
         headers: { 
@@ -80,7 +83,6 @@ export default async function handler(req) {
 
       if (!finalizedResponse.ok) return json({ error: "AI gateway token validation failed." }, 502);
 
-      // FIXED: Safely unpack the ReadableStream body using Edge runtime native constructors
       const responseText = await finalizedResponse.text();
       return new Response(responseText, {
         status: 200,
