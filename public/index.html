@@ -2206,22 +2206,19 @@ html body .image-card-block {
   background: var(--v-surface);
 }
 
-.v-model-select {
+/* Updated Monochrome Badge Component */
+.v-lightning-badge {
   background: var(--v-bg);
   border: 1px solid var(--v-border);
-  color: var(--v-text-muted);
-  font-size: 11px;
-  padding: 4px 8px;
-  border-radius: 6px;
-  outline: none;
-  cursor: pointer;
-  font-weight: 500;
-  transition: all 0.15s ease;
-}
-
-.v-model-select:hover {
-  border-color: var(--v-border-hover);
   color: var(--v-text);
+  font-size: 11px;
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  letter-spacing: 0.3px;
 }
 
 #ai-chat-log {
@@ -2275,9 +2272,16 @@ html body .image-card-block {
 
 #ai-input-row {
   display: flex;
-  gap: 8px;
+  flex-direction: column;
+  gap: 6px;
   padding: 12px 16px 16px 16px;
   background: var(--v-bg);
+}
+
+.ai-input-wrapper {
+  display: flex;
+  gap: 8px;
+  width: 100%;
 }
 
 #ai-chat-input {
@@ -2316,6 +2320,14 @@ html body .image-card-block {
   cursor: not-allowed;
 }
 
+/* Budget counter styling */
+.ai-budget-counter {
+  font-size: 10px;
+  color: var(--v-text-muted);
+  text-align: right;
+  padding-right: 4px;
+}
+
 @media (max-width: 640px) {
   #ai-chat-window {
     width: calc(100vw - 32px);
@@ -2340,35 +2352,70 @@ html body .image-card-block {
   
   <div id="ai-chat-window" role="dialog">
     <div class="ai-header">
-      <select id="v-model-toggle" class="v-model-select" aria-label="Toggle Model">
-        <option value="LiquidAI" selected>LiquidAI: LFM2.5-2.6B (free)</option>
-      </select>
+      <!-- Replaced the interactive dropdown with a clear network capability status marker -->
+      <div class="v-lightning-badge">
+        <span>⚡</span> Kimi K3 (22 Sat Limit)
+      </div>
     </div>
+    
     <div id="ai-chat-log"></div>
     <div id="ai-options-tray" role="toolbar" aria-label="Suggested Prompts"></div>
+    
     <div id="ai-input-row">
-      <input id="ai-chat-input" type="text" placeholder="Send a message..." aria-label="Type message"/>
-      <button id="ai-send-btn" type="button" aria-label="Send message">Send</button>
+      <div class="ai-input-wrapper">
+        <!-- Added explicit hard limits directly inside HTML framework inputs -->
+        <input 
+          id="ai-chat-input" 
+          type="text" 
+          placeholder="Ask anything... (Max 22 Sats)" 
+          aria-label="Type message" 
+          maxlength="220"
+        />
+        <button id="ai-send-btn" type="button" aria-label="Send message">Send</button>
+      </div>
+      <!-- Real-time structural constraint verification ticker -->
+      <div id="ai-char-counter" class="ai-budget-counter">0 / 220 Chars</div>
     </div>
   </div>
 </div>
 
 <!-- PART 3: JS CORE INITIALIZATION & UI CONTROLS -->
 <script>
-  (function () {
-const API_URL = 
-  (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
-    ? 'http://localhost:3000/api/chat'
-    : 'https://chatbot-api-one-mu.vercel.app/api/chat';
-
+  
+(function () {
+  // Point this exactly to your live Vercel backend endpoint deployment link
+  const API_URL = 'https://vercel.app';
 
   const toggle = document.getElementById('ai-toggle-trigger');
   const win = document.getElementById('ai-chat-window');
-  const closeBtn = win.querySelector('.ai-close');
   const log = document.getElementById('ai-chat-log');
   const optionsTray = document.getElementById('ai-options-tray');
   const input = document.getElementById('ai-chat-input');
   const sendBtn = document.getElementById('ai-send-btn');
+  const counter = document.getElementById('ai-char-counter');
+
+  // Inject strict browser limitations to protect your 21-sat limits
+  if (input) {
+    input.setAttribute('maxlength', '210');
+    input.addEventListener('keypress', (e) => { if (e.key === 'Enter') sendMessage(); });
+    
+    if (counter) {
+      input.addEventListener('input', () => {
+        const remaining = input.value.length;
+        counter.textContent = `${remaining} / 210 Chars`;
+        counter.style.color = remaining >= 190 ? '#ff5555' : 'var(--v-text-muted)';
+      });
+    }
+  }
+
+  if (sendBtn) sendBtn.onclick = sendMessage;
+
+  if (toggle && win) {
+    toggle.onclick = () => {
+      const isOpen = win.classList.toggle('open');
+      toggle.setAttribute('aria-expanded', isOpen);
+    };
+  }
 
   const NAV_LINKS = [
     { label: "View Electronics Line Cards", target: "#electronics-section" },
@@ -2388,16 +2435,12 @@ const API_URL =
     const msg = document.createElement('div');
     msg.className = 'ai-msg ' + (who === 'user' ? 'user' : 'bot');
     
-    // Create label securely
     const label = document.createElement('strong');
     label.textContent = who === 'user' ? 'You: ' : 'Velopipe AI: ';
     msg.appendChild(label);
 
-    // Create a container specifically for the payload message body
     const bodyContainer = document.createElement('span');
     
-    // If the local layout injects a clickable HTML link or button tray, allow innerHTML.
-    // Otherwise, default to raw plain-text appending for the remote model stream.
     if (text.includes('<a') || text.includes('<button') || text.includes('<em')) {
       bodyContainer.innerHTML = text;
     } else {
@@ -2408,10 +2451,11 @@ const API_URL =
     log.appendChild(msg);
     log.scrollTop = log.scrollHeight;
     
-    return bodyContainer; // Returns the span hook so the streaming loop can append text directly
+    return bodyContainer; 
   }
 
   function renderMainMenu() {
+    if (!optionsTray) return;
     optionsTray.innerHTML = '';
     const items = [
       { label: 'Jump to Section', action: () => openCategory('sections') },
@@ -2430,6 +2474,7 @@ const API_URL =
   }
 
   function openCategory(type) {
+    if (!optionsTray) return;
     optionsTray.innerHTML = '';
     addMessage(`<em>Accessing ${type}...</em>`, 'bot');
 
@@ -2449,7 +2494,7 @@ const API_URL =
           const el = document.querySelector(item.target);
           if (el) {
             const top = (window.pageYOffset || document.documentElement.scrollTop) + el.getBoundingClientRect().top;
-            try { window.scrollTo({ top: Math.max(0, top - 20), behavior: 'smooth' }); } catch (e) { window.scrollTo(0, Math.max(0, top - 20)); }
+            window.scrollTo({ top: Math.max(0, top - 20), behavior: 'smooth' });
           } else {
             addMessage('Target section anchor not found on this page.', 'bot');
           }
@@ -2499,6 +2544,7 @@ const API_URL =
 
     addMessage(txt, 'user');
     input.value = '';
+    if (counter) counter.textContent = `0 / 210 Chars`;
 
     const lowered = txt.toLowerCase();
 
@@ -2506,7 +2552,7 @@ const API_URL =
       addMessage('Select an item from the Downloads tray below or reply with "Y" to fetch all PDF resources instantly.', 'bot');
       openCategory('downloads');
     } else if (lowered === 'y' || lowered === 'yes') {
-      addMessage('Here are your requested document resources; Contact us for more customized reesources or solutions!', 'bot');
+      addMessage('Here are your requested document resources; Contact us for more customized resources or solutions!', 'bot');
       DOWNLOADS.forEach(item => {
         const b = document.createElement('button');
         b.className = 'ai-option-btn';
@@ -2520,7 +2566,6 @@ const API_URL =
       addMessage('Select a section below to navigate directly:', 'bot');
       openCategory('sections');
     } else {
-      // Fallback: Query Qwen engine with blinking indicator
       fetchAIResponse(txt);
     }
     input.focus();
@@ -2530,10 +2575,9 @@ const API_URL =
     input.disabled = true;
     sendBtn.disabled = true;
 
-    // Create blinking typing element
     const indicator = document.createElement('div');
-    indicator.className = 'ai-msg bot ai-typing-indicator';
-    indicator.innerHTML = '<strong>Velopipe AI:</strong> <em>Velopipe is typing...</em>';
+    indicator.className = 'ai-msg bot';
+    indicator.innerHTML = '<strong>Velopipe AI:</strong> <em>Processing auto-payment...</em>';
     log.appendChild(indicator);
     log.scrollTop = log.scrollHeight;
 
@@ -2546,9 +2590,16 @@ const API_URL =
 
       indicator.remove();
 
-      if (!response.ok) throw new Error('API request failed');
+      if (!response.ok) {
+        if (response.status === 402) {
+          addMessage('Automated payment failed. Check your lnbot balance.', 'bot');
+        } else {
+          addMessage('The assistant is temporarily unavailable.', 'bot');
+        }
+        return;
+      }
       
-      const botTextNode = addMessage('', 'bot'); // Returns the clean bodyContainer span hook
+      const botTextNode = addMessage('', 'bot'); 
       const reader = response.body.getReader();
       const decoder = new TextDecoder('utf-8');
       let done = false;
@@ -2558,19 +2609,15 @@ const API_URL =
         done = readerDone;
 
         if (value) {
-          // Decode directly from the plain-text stream chunk (no regex slicing)
           const chunk = decoder.decode(value, { stream: !done });
-          
-          // Safely append text to protect against XSS injections
-          botTextNode.textContent += chunk; 
-          
+          botTextNode.textContent += chunk;
           log.scrollTop = log.scrollHeight;
         }
       }
-
-    } catch (err) {
-      if (log.contains(indicator)) indicator.remove();
-      addMessage('I can assist with page navigation, resource downloads, or external links. Please pick an option from the menu tray below.', 'bot');
+    } catch (error) {
+      if (document.body.contains(indicator)) indicator.remove();
+      addMessage('The assistant is temporarily offline.', 'bot');
+      console.error(error);
     } finally {
       input.disabled = false;
       sendBtn.disabled = false;
@@ -2578,19 +2625,9 @@ const API_URL =
     }
   }
 
-  toggle.addEventListener('click', () => {
-    const isOpen = win.classList.toggle('open');
-    toggle.setAttribute('aria-expanded', isOpen);
-    if (isOpen && log.children.length === 0) {
-      addMessage('Welcome to the Velopipe Dashboard. Select an option or type a request to begin.', 'bot');
-      renderMainMenu();
-    }
-  });
-
-  if (closeBtn) closeBtn.addEventListener('click', () => win.classList.remove('open'));
-  sendBtn.addEventListener('click', sendMessage);
-  input.addEventListener('keydown', (e) => { if (e.key === 'Enter') sendMessage(); });
+  renderMainMenu();
 })();
+
 </script>
 
  </body>
