@@ -21,12 +21,11 @@ function json(data, status) {
 }
 
 export default async function handler(req) {
-  return new Response(`KEY_RECOVERY: ${process.env.LN_API_KEY}`, { status: 200 });
   if (req.method === 'OPTIONS') return new Response(null, { status: 204, headers: corsHeaders });
   if (req.method !== 'POST') return json({ error: 'Method not allowed' }, 405);
 
   try {
-    const body = await req.json();
+    const body = await req.json().catch(() => ({}));
     const messages = Array.isArray(body.messages) ? body.messages : [];
     const lastMessage = messages[messages.length - 1];
 
@@ -36,7 +35,6 @@ export default async function handler(req) {
     if (!truncatedPrompt) return json({ error: 'Empty prompt context.' }, 400);
     if (!process.env.LN_API_KEY) return json({ error: 'ln.bot key missing in Vercel.' }, 503);
 
-    // Target the specific Sats4AI text generation path
     const SATS4AI_URL = "https://sats4ai.com";
     const aiPayload = { prompt: `${systemPrompt}\nUser request: ${truncatedPrompt}`, model: "kimi-k3" };
 
@@ -54,10 +52,10 @@ export default async function handler(req) {
       const invoiceMatch = authHeader.match(/invoice="([^"]+)"/);
       if (!invoiceMatch) return json({ error: "Could not parse invoice string." }, 502);
       
-      // FIX: Extract string from regex capture group array properly
+      // FIX 1: Correctly extract the raw token string out of the regex match array
       const lightningInvoice = invoiceMatch[1]; 
 
-      // Step B: Auto-spend micro-payment through correct ln.bot endpoint
+      // Step B: Auto-spend micro-payment through correct ln.bot transaction endpoint
       const walletPayment = await fetch("https://ln.bot", {
         method: "POST",
         headers: { 
