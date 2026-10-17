@@ -31,52 +31,45 @@ export default async function handler(req) {
 
     if (!lastMessage || !lastMessage.content) return json({ error: 'A message is required.' }, 400);
 
-    // Strict 21-sat cap: enforce the 210 character input limit boundary safely
+    // Enforce your strict 21-sat budget ceiling (210 characters maximum text barrier)
     const truncatedPrompt = typeof lastMessage.content === 'string' ? lastMessage.content.slice(0, 210) : '';
     if (!truncatedPrompt) return json({ error: 'Empty prompt context.' }, 400);
-    if (!process.env.LN_API_KEY) return json({ error: 'ln.bot gateway key is missing in Vercel settings.' }, 503);
+    if (!process.env.LN_API_KEY) return json({ error: 'ln.bot key missing in Vercel.' }, 503);
 
-    // STEP 1: Hit Sats4AI natively to trigger the L402 paywall challenge
     const SATS4AI_URL = "https://sats4ai.com";
     const aiPayload = { prompt: `${systemPrompt}\nUser request: ${truncatedPrompt}`, model: "kimi-k3" };
 
+    // Step A: Request the initial L402 paywall challenge
     const aiChallengeResponse = await fetch(SATS4AI_URL, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(aiPayload)
     });
 
-    // STEP 2: Intercept the 402 Paywall required challenge status code
     if (aiChallengeResponse.status === 402) {
       const authHeader = aiChallengeResponse.headers.get("WWW-Authenticate");
       if (!authHeader) return json({ error: "L402 challenge header missing." }, 502);
 
       const invoiceMatch = authHeader.match(/invoice="([^"]+)"/);
-      if (!invoiceMatch) return json({ error: "Could not safely decode invoice token." }, 502);
-      const lightningInvoice = invoiceMatch[1]; // Isolate the raw invoice string cleanly
+      if (!invoiceMatch) return json({ error: "Could not parse invoice string." }, 502);
+      const lightningInvoice = invoiceMatch[1]; // Correct array string extraction string
 
-      // STEP 3: Automated Outbound Payment using the real production ln.bot wallet router
-      const LNBOT_PAY_URL = "https://ln.bot";
-      const walletPayment = await fetch(LNBOT_PAY_URL, {
+      // Step B: Auto-spend micro-payment through the production ln.bot wallet payment engine
+      const walletPayment = await fetch("https://ln.bot", {
         method: "POST",
         headers: { 
           "Authorization": `Bearer ${process.env.LN_API_KEY}`, 
           "Content-Type": "application/json" 
         },
-        body: JSON.stringify({ bolt11: lightningInvoice }) // Feeds invoice parameters securely
+        body: JSON.stringify({ bolt11: lightningInvoice })
       });
 
-      if (!walletPayment.ok) {
-        const walletError = await walletPayment.text();
-        console.error("ln.bot payment failure details:", walletError);
-        return json({ error: "Automated wallet routing transaction failed." }, 402);
-      }
-      
+      if (!walletPayment.ok) return json({ error: "Automated wallet routing transaction failed." }, 402);
       const walletData = await walletPayment.json();
       const preimage = walletData.preimage;
 
-      // STEP 4: Authorized AI Request: Send the settlement preimage back to unlock the stream
-      const finalizedStream = await fetch(SATS4AI_URL, {
+      // Step C: Submit proof back to Sats4AI to unlock the text generation payload
+      const finalizedResponse = await fetch(SATS4AI_URL, {
         method: "POST",
         headers: { 
           "Content-Type": "application/json",
@@ -85,21 +78,24 @@ export default async function handler(req) {
         body: JSON.stringify(aiPayload)
       });
 
-      if (!finalizedStream.ok) return json({ error: "AI gateway token authorization verification failed." }, 502);
+      if (!finalizedResponse.ok) return json({ error: "AI gateway token validation failed." }, 502);
 
-      // Direct Stream Handshake: Pass-through response chunks directly back to GitHub Pages
-      return new Response(finalizedStream.body, {
+      // FIXED: Safely unpack the ReadableStream body using Edge runtime native constructors
+      const responseText = await finalizedResponse.text();
+      return new Response(responseText, {
+        status: 200,
         headers: { ...corsHeaders, 'Content-Type': 'text/plain; charset=utf-8' },
       });
     }
 
-    // Direct Return Fallback if the endpoint provides a free completion pass bypass
-    return new Response(aiChallengeResponse.body, {
+    const fallbackText = await aiChallengeResponse.text();
+    return new Response(fallbackText, {
+      status: 200,
       headers: { ...corsHeaders, 'Content-Type': 'text/plain; charset=utf-8' },
     });
 
   } catch (error) {
-    console.error("Vercel Edge function execution crash:", error);
+    console.error("Vercel Edge function processing error:", error);
     return json({ error: 'Runtime error processing proxy pipeline.' }, 500);
   }
 }
