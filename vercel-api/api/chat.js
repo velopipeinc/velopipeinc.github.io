@@ -10,15 +10,11 @@ const corsHeaders = {
   'Cache-Control': 'no-cache, no-transform',
 };
 
-const OPENROUTER_MODEL = 'liquid/lfm-2.5-2.6b:free';
+const MODEL = 'gpt-4o-mini';
 
-const openrouter = createOpenAI({
-  apiKey: process.env.OPENROUTER_API_KEY,
-  baseURL: 'https://openrouter.ai/api/v1',
-  headers: {
-    'HTTP-Referer': process.env.OPENROUTER_SITE_URL || 'https://innovatrix-cbadc.web.app',
-    'X-Title': process.env.OPENROUTER_APP_NAME || 'Velopipe Assistant',
-  },
+const lightningprox = createOpenAI({
+  apiKey: process.env.LIGHTNINGPROX_SPEND_TOKEN,
+  baseURL: 'https://lightningprox.com/v1',
 });
 
 const systemPrompt = `You are the Velopipe AI Assistant. Maintain a professional, clear, and modern tone.
@@ -72,11 +68,13 @@ export default async function handler(req) {
       .filter((msg) => msg.content);
 
     if (!safeMessages.length) return json({ error: 'A message is required.' }, 400);
-    if (!process.env.OPENROUTER_API_KEY) return json({ error: 'The assistant is not configured.' }, 503);
+    if (!process.env.LIGHTNINGPROX_SPEND_TOKEN) {
+  return json({ error: 'The assistant is not configured.' }, 503);
+}
 
 // Under your try-catch block, make sure streamText uses these stable settings:
 const result = streamText({
-  model: openrouter(OPENROUTER_MODEL),
+  model: lightningprox.chat(MODEL),
   system: systemPrompt,
   messages: safeMessages,
   maxTokens: 300,
