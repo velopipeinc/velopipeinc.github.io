@@ -1,5 +1,6 @@
 import { createOpenAI } from '@ai-sdk/openai';
 import { streamText } from 'ai';
+import { tryLnBotInference } from '../lib/lnbot-inference.js';
 
 export const config = { runtime: 'edge' };
 
@@ -70,6 +71,21 @@ export default async function handler(req) {
     if (!safeMessages.length) return json({ error: 'A message is required.' }, 400);
     if (!process.env.LIGHTNINGPROX_SPEND_TOKEN) {
   return json({ error: 'The assistant is not configured.' }, 503);
+}
+
+const paidReply = await tryLnBotInference({
+  model: MODEL,
+  system: systemPrompt,
+  messages: safeMessages,
+});
+
+if (paidReply !== null) {
+  return new Response(paidReply, {
+    headers: {
+      ...corsHeaders,
+      'Content-Type': 'text/plain; charset=utf-8',
+    },
+  });
 }
 
 const result = streamText({
