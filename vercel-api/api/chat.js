@@ -72,13 +72,20 @@ export default async function handler(req) {
   return json({ error: 'The assistant is not configured.' }, 503);
 }
 
-// Under your try-catch block, make sure streamText uses these stable settings:
 const result = streamText({
   model: lightningprox.chat(MODEL),
   system: systemPrompt,
   messages: safeMessages,
   maxTokens: 300,
-  temperature: 0.3, // Hardened anchor for predictable routing outputs
+  temperature: 0.3,
+
+  onFinish({ response, usage }) {
+    console.info('Velopipe inference:', {
+      requestedModel: MODEL,
+      reportedModel: response.modelId,
+      usage,
+    });
+  },
 });
 
     return result.toTextStreamResponse({
