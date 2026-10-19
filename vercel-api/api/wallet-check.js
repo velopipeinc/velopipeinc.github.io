@@ -51,6 +51,17 @@ export default async function handler(req) {
         balance: wallet.balance,
         onHold: wallet.onHold,
         available: wallet.available,
+        payments: await read(
+  `/v1/wallets/${encodeURIComponent(walletId)}/payments?limit=3`
+).then(items => items.map(payment => ({
+  number: payment.number,
+  status: payment.status,
+  amount: payment.amount,
+  actualFee: payment.actualFee,
+  serviceFee: payment.serviceFee,
+  failureReason: payment.failureReason,
+  createdAt: payment.createdAt,
+}))),
       };
     }));
 
