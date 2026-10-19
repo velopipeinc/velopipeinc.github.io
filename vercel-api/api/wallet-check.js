@@ -26,7 +26,7 @@ export default async function handler(req) {
         Authorization: `Bearer ${process.env.LN_API_KEY}`,
       },
       signal: AbortSignal.timeout(10000),
-      redirect: 'error',
+      redirect: 'manual',
     });
 
     if (!response.ok) {
