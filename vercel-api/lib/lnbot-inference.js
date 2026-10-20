@@ -26,8 +26,21 @@ async function walletRequest(path, payload) {
   );
 
   if (!response.ok) {
-    throw new Error(`LNbot returned HTTP ${response.status}`);
-  }
+  const details = await response.json().catch(() => ({}));
+
+  console.error('LNbot request rejected:', {
+    operation: payload ? 'POST payment' : 'GET wallet data',
+    status: response.status,
+    code: details.code ?? details.error?.code,
+    message:
+      details.message ??
+      details.detail ??
+      details.error?.message ??
+      (typeof details.error === 'string' ? details.error : undefined),
+  });
+
+  throw new Error(`LNbot returned HTTP ${response.status}`);
+}
 
   return response.json();
 }
