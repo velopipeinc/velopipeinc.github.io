@@ -166,11 +166,16 @@ export async function tryLnBotInference({
       await new Promise(resolve => setTimeout(resolve, 1000));
       payment = await walletRequest(`/payments/${payment.number}`);
     }
-  } catch {
-    throw new Error(
-      'Payment confirmation unavailable. Check LNbot before retrying.'
-    );
-  }
+
+} catch (error) {
+  console.error('Velopipe LNbot payment diagnostic:', {
+    message: error.message,
+  });
+
+  throw new Error(
+    'Payment confirmation unavailable. Check LNbot before retrying.'
+  );
+}
 
   if (payment.status === 'failed') {
     console.info('Velopipe payment:', {
