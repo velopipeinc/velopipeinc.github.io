@@ -1,11 +1,10 @@
 export const config = { runtime: 'edge' };
 
 const TARGET = 'harriedfreeze80@walletofsatoshi.com';
-const AMOUNT = 10;
-const MAX_FEE = 1;
-
-// Keep this unchanged: repeated submissions reuse the same payment.
-const IDEMPOTENCY_KEY = 'velopipe-wos-transfer-10-v1';
+// CHANGE THESE THREE LINES:
+const AMOUNT = 18;                             // Leaves 3 sats for fees (21 total)
+const MAX_FEE = 2;                             // Gives the network up to 2 sats to route successfully
+const IDEMPOTENCY_KEY = 'velopipe-wos-sweep-18-v2';
 
 export default async function handler(req) {
   const reply = (data, status = 200) =>
