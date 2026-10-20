@@ -143,7 +143,7 @@ export async function tryLnBotInference({
     !Number.isSafeInteger(amount) ||
     amount <= 0 ||
     amount > MAX_INVOICE_SATS ||
-    amount > wallet.available ||
+    amount + 1 > wallet.available ||
     (
       quote.amount_sats !== undefined &&
       quote.amount_sats !== amount
@@ -162,7 +162,7 @@ export async function tryLnBotInference({
   try {
     payment = await walletRequest('/payments', {
       target: quote.invoice,
-      maxFee: 0,
+      maxFee: 1,
       idempotencyKey,
       reference: 'Velopipe GPT-4o mini inference',
     });
